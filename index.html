@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Windows日志分析实战模拟平台 | 信息安全实训室</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0b2b3b 0%, #1a4a5f 100%);
+            font-family: 'Segoe UI', 'Roboto', 'Cascadia Code', monospace;
+            padding: 20px;
+            color: #eef4ff;
+        }
+
+        /* 主容器 */
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* 头部 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #3ba0c0;
+            padding-bottom: 15px;
+        }
+        h1 {
+            font-size: 1.8rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #FFE6B0, #9fd3e7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .badge {
+            background: #0f4c5f;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* 两列布局 */
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+        .col {
+            flex: 1;
+            min-width: 320px;
+            background: rgba(10, 25, 35, 0.7);
+            backdrop-filter: blur(2px);
+            border-radius: 32px;
+            padding: 20px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+            border: 1px solid rgba(80, 180, 210, 0.4);
+            transition: transform 0.2s;
+        }
+        .col:hover {
+            transform: translateY(-3px);
+        }
+
+        /* 日志模拟窗口 (类似事件查看器) */
+        .log-viewer {
+            background: #071e26;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-top: 18px;
+            font-size: 0.8rem;
+            border: 1px solid #2c6f84;
+        }
+        .log-header {
+            background: #0f3b48;
+            padding: 12px 16px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #2a8ead;
+            font-family: monospace;
+        }
+        .log-content {
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        .log-entry {
+            padding: 8px 16px;
+            border-bottom: 1px solid #1a4a58;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.75rem;
+            transition: background 0.1s;
+            cursor: pointer;
+        }
+        .log-entry:hover {
+            background: #1f5568;
+        }
+        .error-level { color: #ffae9e; border-left: 4px solid #f05a5a; background: rgba(240,90,90,0.08); }
+        .warning-level { color: #ffd966; border-left: 4px solid #f0b27a; }
+        .info-level { color: #b8e2f2; border-left: 4px solid #4f9da6; }
+        .security-fail { border-left: 4px solid #e63946; background: rgba(230,57,70,0.1); }
+        .security-success { border-left: 4px solid #2a9d8f; }
+
+        .event-detail {
+            background: #05161f;
+            margin-top: 18px;
+            border-radius: 20px;
+            padding: 16px;
+            border-left: 5px solid #3ba0c0;
+        }
+        .event-detail h4 {
+            margin-bottom: 8px;
+            color: #ffd966;
+        }
+
+        /* 任务卡片 & 互动区 */
+        .mission-card {
+            background: #0c2d38;
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .mission-title {
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-left: 5px solid #f4a261;
+            padding-left: 12px;
+            margin-bottom: 12px;
+        }
+        button {
+            background: #2c7a8c;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 40px;
+            color: white;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background: #3c9bb0;
+            transform: scale(0.97);
+        }
+        .reset-btn {
+            background: #6c4e3a;
+        }
+        .quiz-area {
+            background: #08222b;
+            border-radius: 24px;
+            padding: 18px;
+            margin-top: 20px;
+        }
+        .question {
+            background: #0f3a45;
+            padding: 12px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+        .answer-input {
+            width: 80%;
+            padding: 8px;
+            border-radius: 30px;
+            border: none;
+            background: #eef2f5;
+            margin-top: 8px;
+            font-family: monospace;
+        }
+        .feedback {
+            margin-top: 12px;
+            font-style: italic;
+            color: #c5e4f2;
+        }
+        hr {
+            border-color: #2f7e94;
+            margin: 10px 0;
+        }
+        .stats {
+            font-size: 0.8rem;
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        @media (max-width: 800px) {
+            body { padding: 12px; }
+            .col { min-width: 100%; }
+        }
+        .highlight {
+            background-color: #f4a26130;
+            border-radius: 6px;
+            padding: 2px 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="header">
+        <h1>🪟 Windows日志分析 · 实战模拟平台</h1>
+        <div class="badge">📌 零虚拟机 | 模拟事件查看器 | 师生互动工坊</div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧：系统 + 应用程序模拟 -->
+        <div class="col">
+            <div style="display: flex; justify-content: space-between;">
+                <h3>📁 系统日志 (System.evtx) & 应用程序日志 (Application.evtx)</h3>
+                <div>
+                    <button id="refreshSysBtn" style="padding:4px 12px;">🔄 刷新/模拟新故障</button>
+                </div>
+            </div>
+            <!-- 系统日志模拟表格 -->
+            <div class="log-viewer">
+                <div class="log-header">📋 System.evtx — 系统组件/驱动事件</div>
+                <div class="log-content" id="systemLogList">
+                    <!-- 动态js填充模拟数据 -->
+                </div>
+            </div>
+            <!-- 应用程序日志 -->
+            <div class="log-viewer" style="margin-top: 18px;">
+                <div class="log-header">📋 Application.evtx — 应用程序错误/崩溃</div>
+                <div class="log-content" id="appLogList"></div>
+            </div>
+            <!-- 事件详细信息面板（互动） -->
+            <div class="event-detail" id="eventDetailPanel">
+                <h4>🔍 事件详细信息 (单击任意日志条目)</h4>
+                <div id="detailText">点击左侧任意一条日志，将展示详细分析（事件ID、来源、解读、修复建议）</div>
+            </div>
+        </div>
+
+        <!-- 右侧：安全日志 + 实战任务 + 师生互动 -->
+        <div class="col">
+            <h3>🔐 安全日志 (Security.evtx)</h3>
+            <div class="log-viewer">
+                <div class="log-header">🛡️ 安全审计事件 · 登录/特权调用</div>
+                <div class="log-content" id="securityLogList"></div>
+            </div>
+
+            <!-- 实战项目任务卡（系统故障 & 安全事件模拟） -->
+            <div class="mission-card">
+                <div class="mission-title">⚙️ 任务一：系统故障排查 (服务崩溃/蓝屏模拟)</div>
+                <p>📌 <strong>场景模拟</strong>：Windows更新服务(wuauserv)启动失败，伴随系统意外重启事件。</p>
+                <p>🔎 <strong>你的挑战</strong>：在<strong>系统日志</strong>中找到对应的事件ID（41或7023/7024），并点击日志查看详细根因。</p>
+                <button id="simulateCrashTask">🔧 模拟触发“服务崩溃”新事件</button>
+                <button id="resetSystemLogs" class="reset-btn">🔄 重置系统/应用日志</button>
+                <div id="task1Feedback" class="feedback" style="margin-top: 10px;"></div>
+            </div>
+
+            <div class="mission-card">
+                <div class="mission-title">🔑 任务二：安全事件分析 (暴力破解 & 特权登录)</div>
+                <p>📌 <strong>场景模拟</strong>：攻击者尝试5次错误密码（4625），之后管理员成功登录并提升特权（4624+4672）。</p>
+                <p>🎯 <strong>你的挑战</strong>：在安全日志中定位4625失败事件，指出暴力破解的时间及源IP(模拟)。并找到4624成功登录和4672特权分配事件。</p>
+                <button id="simulateBruteForce">👾 模拟暴力登录事件 (5次失败+成功)</button>
+                <button id="resetSecurityLogs" class="reset-btn">🔄 重置安全日志</button>
+                <div id="task2Feedback" class="feedback"></div>
+            </div>
+
+            <!-- 师生互动问答区 -->
+            <div class="quiz-area">
+                <h3>💬 师生互动 · 知识小测 & 讨论</h3>
+                <div class="question">
+                    <p>📖 <strong>问题1：</strong> 在Windows事件查看器中，记录“系统意外关机/重启”的事件ID是？</p>
+                    <input type="text" id="answer1" class="answer-input" placeholder="输入事件ID，例如 41">
+                    <button id="checkAns1">提交答案</button>
+                    <span id="fb1" class="feedback"></span>
+                </div>
+                <div class="question">
+                    <p>🔐 <strong>问题2：</strong> 安全日志中“登录失败”的事件ID是？以及什么事件ID表示“特殊权限登录(管理员)”？</p>
+                    <input type="text" id="answer2" class="answer-input" placeholder="例: 4625, 4672">
+                    <button id="checkAns2">提交答案</button>
+                    <span id="fb2" class="feedback"></span>
+                </div>
+                <div class="question">
+                    <p>💡 <strong>互动讨论 / 自由提问：</strong> 输入你对日志分析的疑问或心得，老师/助教会模拟回复：</p>
+                    <input type="text" id="freeQuestion" class="answer-input" placeholder="例如: 如何区分内核崩溃和应用崩溃?">
+                    <button id="askQuestion">💬 向助教提问</button>
+                    <div id="qaResponse" class="feedback" style="background:#0a2f3a; padding: 8px; border-radius: 16px; margin-top: 8px;"></div>
+                </div>
+                <div class="stats" style="justify-content: flex-end;">
+                    <span>🏆 模拟环境版本: EVTX 3.0 | 动态交互实验室</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- 模拟数据结构 ----------
+    // 系统日志池 (ID, 级别, 来源, 信息, 详细描述)
+    let systemEvents = [
+        { id: 41, level: "错误", source: "Kernel-Power", msg: "系统在未正常关机的情况下重新启动。", detail: "BugCheckCode 0x00000109 (CRITICAL_STRUCTURE_CORRUPTION), 上次关机时间: 22:15:32，可能原因: 驱动冲突或硬件故障。建议检查最近安装的驱动，运行内存诊断。" },
+        { id: 7023, level: "错误", source: "Service Control Manager", msg: "Windows Update 服务因下列错误而停止: 服务未及时响应启动或控制请求。", detail: "服务启动超时，注册表损坏或依赖服务缺失。修复: 运行sc config wuauserv start= auto 并重启，或使用DISM修复系统。" },
+        { id: 1001, level: "错误", source: "BugCheck", msg: "计算机从 bugcheck 重新启动。", detail: "蓝屏转储: 0x0000003B (SYSTEM_SERVICE_EXCEPTION)，错误模块: ntoskrnl.exe。建议更新显卡驱动，执行SFC扫描。" },
+        { id: 7024, level: "警告", source: "Service Control Manager", msg: "Windows Search 服务因服务特定错误而停止。", detail: "索引损坏，可通过重建索引解决。" }
+    ];
+
+    let appEvents = [
+        { id: 1000, level: "错误", source: "Application Error", msg: "故障模块名称: notepad.exe，异常代码: 0xc0000005", detail: "应用程序崩溃，访问冲突。可能是内存越界或插件冲突。重新安装程序或运行应用程序兼容性疑难解答。" },
+        { id: 1001, level: "错误", source: "Windows Error Reporting", msg: "故障存储段 ，类型 0，事件名称: APPCRASH", detail: "报告显示 excel.exe 加载项错误。建议以安全模式启动office，禁用加载项。" },
+        { id: 1000, level: "错误", source: "Application Hang", msg: "程序 chrome.exe 停止与 Windows 交互并已关闭", detail: "浏览器无响应，可能是扩展冲突或内存不足。清除缓存或重置浏览器。" }
+    ];
+
+    // 安全日志池
+    let securityEvents = [
+        { id: 4625, level: "登录失败", source: "Microsoft-Windows-Security-Auditing", msg: "帐户登录失败。 帐户名: Administrator，源网络地址: 192.168.1.105", detail: "失败原因: 用户名或密码不正确。连续多次失败可能为暴力破解。建议启用账户锁定策略，检查源IP。" },
+        { id: 4624, level: "登录成功", source: "Microsoft-Windows-Security-Auditing", msg: "已成功登录帐户。 帐户名: Administrator，登录进程: User32", detail: "正常交互式登录，来源IP: 127.0.0.1 (本地)。确认登录时间是否异常。" },
+        { id: 4672, level: "特权使用", source: "Microsoft-Windows-Security-Auditing", msg: "为新登录分配了特殊权限。 帐户名: Administrator", detail: "管理员权限分配，属于特权登录，结合4624可判断提权行为。若未预期则可能存在后门。" },
+        { id: 4625, level: "登录失败", source: "Microsoft-Windows-Security-Auditing", msg: "帐户登录失败。 帐户名: Admin，源网络地址: 10.0.0.45", detail: "多次异常登录尝试，疑似横向移动。建议立刻封锁IP 10.0.0.45。" }
+    ];
+
+    // 辅助渲染函数
+    function renderSystemLogs() {
+        const container = document.getElementById('systemLogList');
+        if(!container) return;
+        container.innerHTML = '';
+        systemEvents.forEach((ev, idx) => {
+            const div = document.createElement('div');
+            div.className = `log-entry ${ev.level === '错误' ? 'error-level' : (ev.level === '警告' ? 'warning-level' : 'info-level')}`;
+            div.innerHTML = `<strong>[${ev.id}]</strong> ${ev.source} — ${ev.msg.substring(0, 70)}`;
+            div.setAttribute('data-type', 'system');
+            div.setAttribute('data-index', idx);
+            div.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showEventDetail('system', idx);
+            });
+            container.appendChild(div);
+        });
+    }
+
+    function renderAppLogs() {
+        const container = document.getElementById('appLogList');
+        if(!container) return;
+        container.innerHTML = '';
+        appEvents.forEach((ev, idx) => {
+            const div = document.createElement('div');
+            div.className = `log-entry error-level`;
+            div.innerHTML = `<strong>[${ev.id}]</strong> ${ev.source} — ${ev.msg.substring(0, 65)}`;
+            div.setAttribute('data-type', 'app');
+            div.setAttribute('data-index', idx);
+            div.addEventListener('click', () => showEventDetail('app', idx));
+            container.appendChild(div);
+        });
+    }
+
+    function renderSecurityLogs() {
+        const container = document.getElementById('securityLogList');
+        if(!container) return;
+        container.innerHTML = '';
+        securityEvents.forEach((ev, idx) => {
+            const div = document.createElement('div');
+            let cls = 'log-entry';
+            if(ev.id === 4625) cls += ' security-fail';
+            else if(ev.id === 4624) cls += ' security-success';
+            else cls += ' info-level';
+            div.className = cls;
+            div.innerHTML = `<strong>[${ev.id}]</strong> ${ev.source.split('-').pop()} — ${ev.msg.substring(0, 70)}`;
+            div.setAttribute('data-type', 'security');
+            div.setAttribute('data-index', idx);
+            div.addEventListener('click', () => showEventDetail('security', idx));
+            container.appendChild(div);
+        });
+    }
+
+    function showEventDetail(type, idx) {
+        let eventObj = null;
+        if(type === 'system') eventObj = systemEvents[idx];
+        else if(type === 'app') eventObj = appEvents[idx];
+        else if(type === 'security') eventObj = securityEvents[idx];
+        if(!eventObj) return;
+        const detailDiv = document.getElementById('detailText');
+        let levelBadge = '';
+        if(eventObj.level) levelBadge = `<span style="background:#1f5c6e; padding:2px 8px; border-radius:20px;">级别: ${eventObj.level}</span>`;
+        detailDiv.innerHTML = `
+            <div><strong>📌 事件ID:</strong> ${eventObj.id} &nbsp; ${levelBadge}</div>
+            <div><strong>🖥️ 来源:</strong> ${eventObj.source}</div>
+            <div><strong>📝 消息:</strong> ${eventObj.msg}</div>
+            <div><strong>🔧 详细解读/修复建议:</strong><br> ${eventObj.detail}</div>
+            <div style="margin-top:8px; font-size:0.7rem;">✨ 模拟分析: 该事件属于${type==='system'?'系统组件':(type==='app'?'应用程序':'安全审计')}关键记录。</div>
+        `;
+    }
+
+    // 模拟任务：服务崩溃（新增系统事件）
+    function addServiceCrashEvent() {
+        const newEvent = {
+            id: 7023,
+            level: "错误",
+            source: "Service Control Manager",
+            msg: "Windows Update 服务启动失败。错误: 0x80070422",
+            detail: "服务被禁用或依赖缺失，可运行: sc config wuauserv start= auto & net start wuauserv。此事件模拟了任务一的故障。"
+        };
+        systemEvents.unshift(newEvent);
+        renderSystemLogs();
+        document.getElementById('task1Feedback').innerHTML = "✅ 已添加新的服务崩溃事件 (ID 7023)。请在系统日志中点击查看详情，并分析修复方法！";
+        setTimeout(() => {
+            const fb = document.getElementById('task1Feedback');
+            if(fb) setTimeout(() => { if(fb.innerHTML.includes("已添加")) fb.innerHTML = ""; }, 5000);
+        }, 5000);
+    }
+
+    function resetSystemAndApp() {
+        systemEvents = [
+            { id: 41, level: "错误", source: "Kernel-Power", msg: "系统在未正常关机的情况下重新启动。", detail: "BugCheckCode 0x00000109 (CRITICAL_STRUCTURE_CORRUPTION), 上次关机时间: 22:15:32，可能原因: 驱动冲突或硬件故障。建议检查最近安装的驱动，运行内存诊断。" },
+            { id: 7023, level: "错误", source: "Service Control Manager", msg: "Windows Update 服务因下列错误而停止: 服务未及时响应启动或控制请求。", detail: "服务启动超时，注册表损坏或依赖服务缺失。修复: 运行sc config wuauserv start= auto 并重启，或使用DISM修复系统。" },
+            { id: 1001, level: "错误", source: "BugCheck", msg: "计算机从 bugcheck 重新启动。", detail: "蓝屏转储: 0x0000003B (SYSTEM_SERVICE_EXCEPTION)，错误模块: ntoskrnl.exe。建议更新显卡驱动，执行SFC扫描。" },
+            { id: 7024, level: "警告", source: "Service Control Manager", msg: "Windows Search 服务因服务特定错误而停止。", detail: "索引损坏，可通过重建索引解决。" }
+        ];
+        appEvents = [
+            { id: 1000, level: "错误", source: "Application Error", msg: "故障模块名称: notepad.exe，异常代码: 0xc0000005", detail: "应用程序崩溃，访问冲突。可能是内存越界或插件冲突。重新安装程序或运行应用程序兼容性疑难解答。" },
+            { id: 1001, level: "错误", source: "Windows Error Reporting", msg: "故障存储段 ，类型 0，事件名称: APPCRASH", detail: "报告显示 excel.exe 加载项错误。建议以安全模式启动office，禁用加载项。" },
+            { id: 1000, level: "错误", source: "Application Hang", msg: "程序 chrome.exe 停止与 Windows 交互并已关闭", detail: "浏览器无响应，可能是扩展冲突或内存不足。清除缓存或重置浏览器。" }
+        ];
+        renderSystemLogs();
+        renderAppLogs();
+        document.getElementById('task1Feedback').innerHTML = "🔄 系统/应用日志已重置为初始状态。";
+        setTimeout(() => {
+            if(document.getElementById('task1Feedback').innerHTML.includes("重置")) document.getElementById('task1Feedback').innerHTML = "";
+        }, 3000);
+    }
+
+    // 模拟暴力破解: 新增3次失败 加一次成功+特权
+    function simulateBruteForceAttack() {
+        // 添加3条不同的4625失败 (模拟暴力)
+        const fakeIps = ["192.168.1.120", "10.10.10.5", "172.16.20.3"];
+        for(let ip of fakeIps) {
+            securityEvents.unshift({
+                id: 4625, level: "登录失败", source: "Microsoft-Windows-Security-Auditing",
+                msg: `帐户登录失败。 帐户名: Administrator，源网络地址: ${ip}`,
+                detail: `失败原因: 用户名或密码错误。连续多次失败可能为暴力破解。建议启用账户锁定策略，检查源IP ${ip}。`
+            });
+        }
+        // 添加4624成功登录 + 4672特权
+        securityEvents.unshift({
+            id: 4624, level: "登录成功", source: "Microsoft-Windows-Security-Auditing",
+            msg: "已成功登录帐户。 帐户名: Administrator，登录进程: User32，源网络地址: 127.0.0.1",
+            detail: "交互式登录成功，但在暴力破解后出现，可能存在弱口令风险，需审查。"
+        });
+        securityEvents.unshift({
+            id: 4672, level: "特权使用", source: "Microsoft-Windows-Security-Auditing",
+            msg: "为新登录分配了特殊权限。 帐户名: Administrator",
+            detail: "管理员特权分配事件，通常与4624同时发生。若发现异常时间点的提权应深入调查。"
+        });
+        renderSecurityLogs();
+        document.getElementById('task2Feedback').innerHTML = "⚠️ 已生成暴力破解场景：3次登录失败(4625) + 成功登录(4624) + 特权分配(4672)。请分析安全日志，找出攻击痕迹。";
+        setTimeout(() => {
+            const fb2 = document.getElementById('task2Feedback');
+            if(fb2 && fb2.innerHTML.includes("暴力破解")) setTimeout(() => fb2.innerHTML = "", 6000);
+        }, 6000);
+    }
+
+    function resetSecurityOnly() {
+        securityEvents = [
+            { id: 4625, level: "登录失败", source: "Microsoft-Windows-Security-Auditing", msg: "帐户登录失败。 帐户名: Administrator，源网络地址: 192.168.1.105", detail: "失败原因: 用户名或密码不正确。连续多次失败可能为暴力破解。建议启用账户锁定策略，检查源IP。" },
+            { id: 4624, level: "登录成功", source: "Microsoft-Windows-Security-Auditing", msg: "已成功登录帐户。 帐户名: Administrator，登录进程: User32", detail: "正常交互式登录，来源IP: 127.0.0.1 (本地)。确认登录时间是否异常。" },
+            { id: 4672, level: "特权使用", source: "Microsoft-Windows-Security-Auditing", msg: "为新登录分配了特殊权限。 帐户名: Administrator", detail: "管理员权限分配，属于特权登录，结合4624可判断提权行为。若未预期则可能存在后门。" },
+            { id: 4625, level: "登录失败", source: "Microsoft-Windows-Security-Auditing", msg: "帐户登录失败。 帐户名: Admin，源网络地址: 10.0.0.45", detail: "多次异常登录尝试，疑似横向移动。建议立刻封锁IP 10.0.0.45。" }
+        ];
+        renderSecurityLogs();
+        document.getElementById('task2Feedback').innerHTML = "🔄 安全日志已重置为默认样例。";
+        setTimeout(() => {
+            if(document.getElementById('task2Feedback').innerHTML.includes("重置")) document.getElementById('task2Feedback').innerHTML = "";
+        }, 2500);
+    }
+
+    // 师生互动
+    function checkAnswer1() {
+        const ans = document.getElementById('answer1').value.trim();
+        const fb = document.getElementById('fb1');
+        if(ans === "41") fb.innerHTML = "✅ 正确！事件ID 41 表示系统意外重启（Kernel-Power）。非常棒！";
+        else fb.innerHTML = "❌ 再想想，系统意外关机/重启的典型事件ID是 41（Kernel-Power）。";
+    }
+    function checkAnswer2() {
+        const ans = document.getElementById('answer2').value.trim();
+        const fb = document.getElementById('fb2');
+        if(ans.includes("4625") && ans.includes("4672")) fb.innerHTML = "✅ 正确！登录失败是4625，特殊权限/管理员登录是4672。";
+        else fb.innerHTML = "⚠️ 提示：登录失败事件ID = 4625，特殊权限分配/管理员登录 = 4672。";
+    }
+    function askFree() {
+        const q = document.getElementById('freeQuestion').value.trim();
+        const respDiv = document.getElementById('qaResponse');
+        if(!q) { respDiv.innerHTML = "💡 请先输入你的问题～"; return; }
+        const answers = [
+            "👨‍🏫 老师回复: 内核崩溃通常记录在System日志中，事件ID 41或1001；应用崩溃在Application日志中，事件ID 1000。",
+            "🧑‍💻 助教: 可以使用PowerShell `Get-WinEvent` 批量分析，筛选指定时间范围的事件。",
+            "📘 模拟反馈: 安全日志中4625连续出现，建议结合登录类型和源IP进行应急响应。",
+            "✨ 很好！你正在掌握Windows日志分析核心技巧，多做实验增强敏锐度。"
+        ];
+        const randomResp = answers[Math.floor(Math.random() * answers.length)];
+        respDiv.innerHTML = `💬 你的提问: "${q}" <br>🎓 ${randomResp}`;
+        document.getElementById('freeQuestion').value = '';
+    }
+
+    // 事件监听及初始渲染
+    window.onload = () => {
+        renderSystemLogs();
+        renderAppLogs();
+        renderSecurityLogs();
+        document.getElementById('simulateCrashTask').addEventListener('click', addServiceCrashEvent);
+        document.getElementById('resetSystemLogs').addEventListener('click', resetSystemAndApp);
+        document.getElementById('simulateBruteForce').addEventListener('click', simulateBruteForceAttack);
+        document.getElementById('resetSecurityLogs').addEventListener('click', resetSecurityOnly);
+        document.getElementById('checkAns1').addEventListener('click', checkAnswer1);
+        document.getElementById('checkAns2').addEventListener('click', checkAnswer2);
+        document.getElementById('askQuestion').addEventListener('click', askFree);
+        document.getElementById('refreshSysBtn').addEventListener('click', () => {
+            addServiceCrashEvent();
+        });
+        // 设置默认详情提示
+        document.getElementById('detailText').innerHTML = "点击任意日志条目，将显示详细的故障分析或安全取证建议（模拟真实evtx分析）。";
+    };
+</script>
+</body>
+</html>
